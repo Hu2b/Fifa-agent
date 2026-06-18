@@ -1,4 +1,4 @@
-const BASE = 'https://worldcup26.ir/get'
+const RAW = 'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json'
 
 const H2H_DATA = {
   'England_Croatia': [
@@ -30,58 +30,70 @@ const H2H_DATA = {
 function getH2H(t1, t2) {
   for (const [key, val] of Object.entries(H2H_DATA)) {
     const [a, b] = key.split('_')
-    if ((t1.includes(a) || a.includes(t1)) && (t2.includes(b) || b.includes(t2))) return val
-    if ((t2.includes(a) || a.includes(t2)) && (t1.includes(b) || b.includes(t1))) return val
+    if (t1.includes(a) && t2.includes(b)) return val
+    if (t2.includes(a) && t1.includes(b)) return val
+    if (a.includes(t1) && b.includes(t2)) return val
+    if (a.includes(t2) && b.includes(t1)) return val
   }
   return []
 }
 
 function formatKickoff(dateStr, timeStr) {
-  const d = new Date(`${dateStr}T${timeStr || '00:00'}:00Z`)
-  const cet = new Date(d.getTime() + 2 * 60 * 60 * 1000)
+  const clean = (timeStr || '00:00').replace(/\s*UTC[+-]\d+/, '').trim().slice(0, 5)
+  const utcOffset = (timeStr || '').match(/UTC([+-]\d+)/)
+  const offsetH = utcOffset ? parseInt(utcOffset[1]) : 0
+  const d = new Date(`${dateStr}T${clean}:00Z`)
+  const adjusted = new Date(d.getTime() - offsetH * 60 * 60 * 1000)
+  const cet = new Date(adjusted.getTime() + 2 * 60 * 60 * 1000)
   const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
   return {
     date_cet: `${days[cet.getUTCDay()]} ${cet.getUTCDate()} ${months[cet.getUTCMonth()]} ${cet.getUTCFullYear()}`,
-    kickoff_cet: `${String(cet.getUTCHours()).padStart(2,'0')}:${String(cet.getUTCMinutes()).padStart(2,'0')} CET`
+    kickoff_cet: `${String(cet.getUTCHours()).padStart(2,'0')}:${String(cet.getUTCMinutes()).padStart(2,'0')} CET`,
+    date_iso: cet.toISOString().slice(0, 10)
   }
 }
 
 function toStatus(m) {
-  if (m.status === 'completed') return 'FT'
-  if (m.status === 'in_progress') return 'LIVE'
+  if (!m.score) return 'Upcoming'
+  if (m.score.ft) return 'FT'
+  if (m.score.ht) return 'HT'
   return 'Upcoming'
 }
 
 function transform(m) {
-  const home = m.home_team?.name || m.team1 || '?'
-  const away = m.away_team?.name || m.team2 || '?'
+  const home = m.team1 || '?'
+  const away = m.team2 || '?'
   const status = toStatus(m)
-  const scored = status === 'FT' || status === 'LIVE'
-  const { date_cet, kickoff_cet } = formatKickoff(m.datetime?.slice(0,10) || m.date, m.datetime?.slice(11,16) || m.time)
+  const { date_cet, kickoff_cet, date_iso } = formatKickoff(m.date, m.time)
+  const scored = status === 'FT' || status === 'HT'
   return {
-    id: m.id || m.num,
+    id: `${m.date}_${home}_${away}`,
     home_team: home, away_team: away,
-    home_score: scored ? (m.home_team?.goals ?? m.score1 ?? null) : null,
-    away_score: scored ? (m.away_team?.goals ?? m.score2 ?? null) : null,
+    home_score: scored ? (m.score?.ft?.[0] ?? m.score?.ht?.[0] ?? null) : null,
+    away_score: scored ? (m.score?.ft?.[1] ?? m.score?.ht?.[1] ?? null) : null,
     status,
-    competition: `FIFA World Cup 2026 · ${m.group || 'Group Stage'}`,
+    competition: `FIFA World Cup 2026 · ${m.round || 'Group Stage'}`,
     stadium: m.stadium?.name || m.venue || '',
     city: m.stadium?.city || m.city || '',
-    date_cet, kickoff_cet, scorers: null, h2h: getH2H(home, away)
+    date_cet, kickoff_cet, date_iso,
+    scorers: null, h2h: getH2H(home, away)
   }
 }
 
 export async function fetchMatches() {
-  const res = await fetch(`${BASE}/games`)
+  const res = await fetch(RAW)
   if (!res.ok) throw new Error(`API_ERROR_${res.status}`)
   const data = await res.json()
-  const matches = Array.isArray(data) ? data : (data.matches || data.games || [])
+  const allMatches = (data.matches || []).map(transform)
   const now = new Date()
-  const today = now.toISOString().slice(0,10)
-  const yest = new Date(now.setDate(now.getDate()-1)).toISOString().slice(0,10)
-  const byTime = (a,b) => a.kickoff_cet.localeCompare(b.kickoff_cet)
-  const today_matches = matches.filter(m=>(m.datetime||m.date||'').slice(0,10)===today).map(transform).sort(byTime)
-  const yesterday_matches = matches.filter(m=>(m.datetime||m.date||'').slice(0,10)===yest).map(transform).sort(byTime)
+  const cetNow = new Date(now.getTime() + 2 * 60 * 60 * 1000)
+  const today = cetNow.toISOString().slice(0, 10)
+  const yestDate = new Date(cetNow)
+  yestDate.setDate(cetNow.getDate() - 1)
+  const yest = yestDate.toISOString().slice(0, 10)
+  const byTime = (a, b) => a.kickoff_cet.localeCompare(b.kickoff_cet)
+  const today_matches = allMatches.filter(m => m.date_iso === today).sort(byTime)
+  const yesterday_matches = allMatches.filter(m => m.date_iso === yest).sort(byTime)
   return { today_matches, yesterday_matches, generated_at: new Date().toISOString() }
 }
