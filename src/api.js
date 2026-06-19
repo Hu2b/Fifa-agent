@@ -38,21 +38,25 @@ function getH2H(t1, t2) {
   return []
 }
 
+// ET offset: EDT=UTC-4 (Mar-Nov), EST=UTC-5
 function etOffset(date) {
   const m = date.getUTCMonth()
   return (m >= 2 && m <= 10) ? -4 : -5
 }
 
+// CET offset: CEST=UTC+2 (Mar-Oct), CET=UTC+1
 function cetOffset(date) {
   const m = date.getUTCMonth()
   return (m >= 2 && m <= 9) ? 2 : 1
 }
 
+// YYYY-MM-DD in US Eastern Time — for filtering today/yesterday only
 function toETDateString(utcDate) {
   const et = new Date(utcDate.getTime() + etOffset(utcDate) * 60 * 60 * 1000)
   return et.toISOString().slice(0, 10)
 }
 
+// Display date and time in CET — shown in UI
 function toCETDisplay(utcDate) {
   const cet = new Date(utcDate.getTime() + cetOffset(utcDate) * 60 * 60 * 1000)
   const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
@@ -63,6 +67,7 @@ function toCETDisplay(utcDate) {
   }
 }
 
+// Parse match local time + UTC offset into a UTC Date object
 function parseMatchUTC(dateStr, timeStr) {
   const clean = (timeStr || '00:00').trim()
   const match = clean.match(/(\d{2}:\d{2})\s*(?:UTC([+-]\d+))?/)
@@ -101,6 +106,7 @@ function transform(m) {
     date_cet,
     kickoff_cet,
     et_date,
+    utc_ms: utcDate.getTime(), // raw UTC milliseconds — used for sorting
     scorers: null,
     h2h: getH2H(home, away),
   }
@@ -112,17 +118,17 @@ export async function fetchMatches() {
   const data = await res.json()
   const allMatches = (data.matches || []).map(transform)
 
+  // Today and yesterday in US Eastern Time
   const nowUTC = new Date()
   const nowET = new Date(nowUTC.getTime() + etOffset(nowUTC) * 60 * 60 * 1000)
   const todayET = nowET.toISOString().slice(0, 10)
   const yesterdayET = new Date(nowET.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
-  // Sort by date first, then by kickoff time within that date
-  const byDateTime = (a, b) =>
-    `${a.et_date} ${a.kickoff_cet}`.localeCompare(`${b.et_date} ${b.kickoff_cet}`)
+  // Sort by actual UTC kickoff time — always correct regardless of timezone display
+  const byUTC = (a, b) => a.utc_ms - b.utc_ms
 
-  const today_matches = allMatches.filter(m => m.et_date === todayET).sort(byDateTime)
-  const yesterday_matches = allMatches.filter(m => m.et_date === yesterdayET).sort(byDateTime)
+  const today_matches = allMatches.filter(m => m.et_date === todayET).sort(byUTC)
+  const yesterday_matches = allMatches.filter(m => m.et_date === yesterdayET).sort(byUTC)
 
   return { today_matches, yesterday_matches, generated_at: new Date().toISOString() }
 }
