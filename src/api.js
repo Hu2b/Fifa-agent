@@ -38,20 +38,44 @@ function getH2H(t1, t2) {
   return []
 }
 
-function formatKickoff(dateStr, timeStr) {
-  const clean = (timeStr || '00:00').replace(/\s*UTC[+-]\d+/, '').trim().slice(0, 5)
-  const utcOffset = (timeStr || '').match(/UTC([+-]\d+)/)
-  const offsetH = utcOffset ? parseInt(utcOffset[1]) : 0
-  const d = new Date(`${dateStr}T${clean}:00Z`)
-  const adjusted = new Date(d.getTime() - offsetH * 60 * 60 * 1000)
-  const cet = new Date(adjusted.getTime() + 2 * 60 * 60 * 1000)
+// US Eastern Time offset: EDT = UTC-4 (Mar-Nov), EST = UTC-5 (Nov-Mar)
+function etOffset(date) {
+  const m = date.getUTCMonth()
+  return (m >= 2 && m <= 10) ? -4 : -5
+}
+
+// CET offset: CEST = UTC+2 (Mar-Oct), CET = UTC+1 (Oct-Mar)
+function cetOffset(date) {
+  const m = date.getUTCMonth()
+  return (m >= 2 && m <= 9) ? 2 : 1
+}
+
+// Get YYYY-MM-DD in US Eastern Time — used for today/yesterday filtering only
+function toETDateString(utcDate) {
+  const et = new Date(utcDate.getTime() + etOffset(utcDate) * 60 * 60 * 1000)
+  return et.toISOString().slice(0, 10)
+}
+
+// Format display date and time in CET — shown in the UI
+function toCETDisplay(utcDate) {
+  const cet = new Date(utcDate.getTime() + cetOffset(utcDate) * 60 * 60 * 1000)
   const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
   return {
     date_cet: `${days[cet.getUTCDay()]} ${cet.getUTCDate()} ${months[cet.getUTCMonth()]} ${cet.getUTCFullYear()}`,
     kickoff_cet: `${String(cet.getUTCHours()).padStart(2,'0')}:${String(cet.getUTCMinutes()).padStart(2,'0')} CET`,
-    date_iso: cet.toISOString().slice(0, 10)
   }
+}
+
+function parseMatchUTC(dateStr, timeStr) {
+  const clean = (timeStr || '00:00').trim()
+  const match = clean.match(/(\d{2}:\d{2})\s*(?:UTC([+-]\d+))?/)
+  if (!match) return new Date(`${dateStr}T00:00:00Z`)
+  const [hh, mm] = match[1].split(':').map(Number)
+  const offset = match[2] ? parseInt(match[2]) : 0
+  const d = new Date(`${dateStr}T00:00:00Z`)
+  d.setUTCHours(hh - offset, mm, 0, 0)
+  return d
 }
 
 function toStatus(m) {
@@ -65,7 +89,9 @@ function transform(m) {
   const home = m.team1 || '?'
   const away = m.team2 || '?'
   const status = toStatus(m)
-  const { date_cet, kickoff_cet, date_iso } = formatKickoff(m.date, m.time)
+  const utcDate = parseMatchUTC(m.date, m.time)
+  const { date_cet, kickoff_cet } = toCETDisplay(utcDate)
+  const et_date = toETDateString(utcDate)
   const scored = status === 'FT' || status === 'HT'
   return {
     id: `${m.date}_${home}_${away}`,
@@ -76,8 +102,11 @@ function transform(m) {
     competition: `FIFA World Cup 2026 · ${m.round || 'Group Stage'}`,
     stadium: m.stadium?.name || m.venue || '',
     city: m.stadium?.city || m.city || '',
-    date_cet, kickoff_cet, date_iso,
-    scorers: null, h2h: getH2H(home, away)
+    date_cet,
+    kickoff_cet,
+    et_date,
+    scorers: null,
+    h2h: getH2H(home, away),
   }
 }
 
@@ -86,14 +115,16 @@ export async function fetchMatches() {
   if (!res.ok) throw new Error(`API_ERROR_${res.status}`)
   const data = await res.json()
   const allMatches = (data.matches || []).map(transform)
-  const now = new Date()
-  const cetNow = new Date(now.getTime() + 2 * 60 * 60 * 1000)
-  const today = cetNow.toISOString().slice(0, 10)
-  const yestDate = new Date(cetNow)
-  yestDate.setDate(cetNow.getDate() - 1)
-  const yest = yestDate.toISOString().slice(0, 10)
+
+  // Today and yesterday in US Eastern Time
+  const nowUTC = new Date()
+  const nowET = new Date(nowUTC.getTime() + etOffset(nowUTC) * 60 * 60 * 1000)
+  const todayET = nowET.toISOString().slice(0, 10)
+  const yesterdayET = new Date(nowET.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+
   const byTime = (a, b) => a.kickoff_cet.localeCompare(b.kickoff_cet)
-  const today_matches = allMatches.filter(m => m.date_iso === today).sort(byTime)
-  const yesterday_matches = allMatches.filter(m => m.date_iso === yest).sort(byTime)
+  const today_matches = allMatches.filter(m => m.et_date === todayET).sort(byTime)
+  const yesterday_matches = allMatches.filter(m => m.et_date === yesterdayET).sort(byTime)
+
   return { today_matches, yesterday_matches, generated_at: new Date().toISOString() }
 }
