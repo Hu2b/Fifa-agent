@@ -38,25 +38,21 @@ function getH2H(t1, t2) {
   return []
 }
 
-// US Eastern Time offset: EDT = UTC-4 (Mar-Nov), EST = UTC-5 (Nov-Mar)
 function etOffset(date) {
   const m = date.getUTCMonth()
   return (m >= 2 && m <= 10) ? -4 : -5
 }
 
-// CET offset: CEST = UTC+2 (Mar-Oct), CET = UTC+1 (Oct-Mar)
 function cetOffset(date) {
   const m = date.getUTCMonth()
   return (m >= 2 && m <= 9) ? 2 : 1
 }
 
-// Get YYYY-MM-DD in US Eastern Time — used for today/yesterday filtering only
 function toETDateString(utcDate) {
   const et = new Date(utcDate.getTime() + etOffset(utcDate) * 60 * 60 * 1000)
   return et.toISOString().slice(0, 10)
 }
 
-// Format display date and time in CET — shown in the UI
 function toCETDisplay(utcDate) {
   const cet = new Date(utcDate.getTime() + cetOffset(utcDate) * 60 * 60 * 1000)
   const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
@@ -116,15 +112,17 @@ export async function fetchMatches() {
   const data = await res.json()
   const allMatches = (data.matches || []).map(transform)
 
-  // Today and yesterday in US Eastern Time
   const nowUTC = new Date()
   const nowET = new Date(nowUTC.getTime() + etOffset(nowUTC) * 60 * 60 * 1000)
   const todayET = nowET.toISOString().slice(0, 10)
   const yesterdayET = new Date(nowET.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
-  const byTime = (a, b) => a.kickoff_cet.localeCompare(b.kickoff_cet)
-  const today_matches = allMatches.filter(m => m.et_date === todayET).sort(byTime)
-  const yesterday_matches = allMatches.filter(m => m.et_date === yesterdayET).sort(byTime)
+  // Sort by date first, then by kickoff time within that date
+  const byDateTime = (a, b) =>
+    `${a.et_date} ${a.kickoff_cet}`.localeCompare(`${b.et_date} ${b.kickoff_cet}`)
+
+  const today_matches = allMatches.filter(m => m.et_date === todayET).sort(byDateTime)
+  const yesterday_matches = allMatches.filter(m => m.et_date === yesterdayET).sort(byDateTime)
 
   return { today_matches, yesterday_matches, generated_at: new Date().toISOString() }
 }
