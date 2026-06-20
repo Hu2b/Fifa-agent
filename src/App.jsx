@@ -124,7 +124,7 @@ function H2HSection({ m }) {
       background: 'rgba(255,255,255,0.03)', border: '1px solid #222',
       fontSize: 11, color: '#555' }}>⚔️ Head-to-head data unavailable</div>
   )
-  const h2h = m.h2h || []
+  const h2h = Array.isArray(m.h2h) ? m.h2h : (typeof m.h2h === 'string' ? [] : [])
   return (
     <div style={{ marginTop: 10 }}>
       <button onClick={() => setOpen(!open)} style={{
@@ -137,17 +137,20 @@ function H2HSection({ m }) {
       }}>
         ⚔️ <span>HEAD TO HEAD</span>
         <span style={{ color: open ? '#7b8cf7' : '#777', fontWeight: 400, fontSize: 10 }}>
-          {h2h.length === 0 ? '— first ever meeting' : `· ${h2h.length} previous meeting${h2h.length === 1 ? '' : 's'}`}
+          {!h2h || h2h.length === 0 ? '— first ever meeting' : `· ${h2h.length} previous meeting${h2h.length === 1 ? '' : 's'}`}
         </span>
         <span style={{ marginLeft: 'auto', color: '#aaa' }}>{open ? '▲' : '▼'}</span>
       </button>
       {open && (
         <div style={{ marginTop: 5, borderRadius: 8, overflow: 'hidden', border: '1px solid #2a2a2a' }}>
-          {h2h.length === 0
+          {!h2h || h2h.length === 0
             ? <div style={{ padding: '12px 14px', color: '#666', fontSize: 11, fontStyle: 'italic' }}>
                 No previous senior international meetings recorded.
               </div>
-            : h2h.map((h, i) => <H2HRow key={i} m={h} i={i} />)
+            : h2h.map((h, i) => {
+              try { return <H2HRow key={i} m={h || {}} i={i} /> }
+              catch(e) { return <div key={i} style={{padding:'6px 12px',color:'#555',fontSize:10}}>—</div> }
+            })
           }
         </div>
       )}
