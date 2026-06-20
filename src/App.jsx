@@ -47,20 +47,54 @@ function TeamFlag({ name, isTBD }) {
 }
 
 function H2HRow({ m, i }) {
+  // Split score into home/away around the dash
+  // Handles: "2-0", "3-2 (aet)", "0-0 (4-2p)", "10-1"
+  const parts = (m.score || '').match(/^(\S+)-(\S+.*)$/)
+  const scoreL = parts ? parts[1] : m.score
+  const scoreR = parts ? parts[2] : ''
+
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px',
+      display: 'grid',
+      gridTemplateColumns: '76px 1fr 28px 10px 28px 1fr',
+      alignItems: 'center',
+      padding: '7px 12px',
+      gap: 0,
       background: i % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)',
     }}>
-      <span style={{ color: '#888', minWidth: 82, fontSize: 10, fontFamily: 'monospace' }}>{m.date}</span>
-      <span style={{ color: '#ccc', flex: 1, textAlign: 'right', fontSize: 11 }}>{m.home}</span>
+      <span style={{ color: '#666', fontSize: 10, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+        {m.date}
+      </span>
+      <span style={{ color: '#ccc', fontSize: 11, textAlign: 'right', paddingRight: 6,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {m.home}
+      </span>
       <span style={{
-        background: 'rgba(255,255,255,0.12)', borderRadius: 4, padding: '2px 8px',
-        fontFamily: 'monospace', fontWeight: 700, color: '#fff',
-        minWidth: 42, textAlign: 'center', fontSize: 12, flexShrink: 0,
-      }}>{m.score}</span>
-      <span style={{ color: '#ccc', flex: 1, fontSize: 11 }}>{m.away}</span>
-      {m.note && <span style={{ color: '#666', fontSize: 9, whiteSpace: 'nowrap' }}>{m.note}</span>}
+        fontFamily: 'monospace', fontWeight: 700, color: '#fff', fontSize: 12,
+        textAlign: 'right', background: 'rgba(255,255,255,0.10)',
+        borderRadius: '4px 0 0 4px', padding: '2px 5px', display: 'block',
+      }}>
+        {scoreL}
+      </span>
+      <span style={{
+        fontFamily: 'monospace', fontWeight: 700, color: '#666', fontSize: 12,
+        textAlign: 'center', background: 'rgba(255,255,255,0.10)',
+        padding: '2px 0', display: 'block',
+      }}>
+        -
+      </span>
+      <span style={{
+        fontFamily: 'monospace', fontWeight: 700, color: '#fff', fontSize: 12,
+        textAlign: 'left', background: 'rgba(255,255,255,0.10)',
+        borderRadius: '0 4px 4px 0', padding: '2px 5px', display: 'block',
+      }}>
+        {scoreR}
+      </span>
+      <span style={{ color: '#ccc', fontSize: 11, paddingLeft: 6,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {m.away}
+        {m.note && <span style={{ color: '#555', fontSize: 9, marginLeft: 5 }}>{m.note}</span>}
+      </span>
     </div>
   )
 }
@@ -82,8 +116,6 @@ function StatusBadge({ status }) {
 
 function H2HSection({ m }) {
   const [open, setOpen] = useState(false)
-
-  // TBD match — teams not yet known
   if (!m.teams_known) {
     return (
       <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8,
@@ -93,8 +125,6 @@ function H2HSection({ m }) {
       </div>
     )
   }
-
-  // Still loading
   if (m.h2h_status === 'loading' || m.h2h_status === 'pending') {
     return (
       <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8,
@@ -105,8 +135,6 @@ function H2HSection({ m }) {
       </div>
     )
   }
-
-  // Error fetching
   if (m.h2h_status === 'error') {
     return (
       <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8,
@@ -116,9 +144,7 @@ function H2HSection({ m }) {
       </div>
     )
   }
-
   const h2h = m.h2h || []
-
   return (
     <div style={{ marginTop: 10 }}>
       <button onClick={() => setOpen(!open)} style={{
@@ -131,9 +157,7 @@ function H2HSection({ m }) {
       }}>
         ⚔️ <span>HEAD TO HEAD</span>
         <span style={{ color: open ? '#7b8cf7' : '#777', fontWeight: 400, fontSize: 10 }}>
-          {h2h.length === 0
-            ? '— first ever meeting'
-            : `· ${h2h.length} previous meeting${h2h.length === 1 ? '' : 's'}`}
+          {h2h.length === 0 ? '— first ever meeting' : `· ${h2h.length} previous meeting${h2h.length === 1 ? '' : 's'}`}
         </span>
         <span style={{ marginLeft: 'auto', color: '#aaa' }}>{open ? '▲' : '▼'}</span>
       </button>
@@ -154,14 +178,12 @@ function H2HSection({ m }) {
 function MatchCard({ m, isResult }) {
   const isTBD = !m.teams_known
   const scored = m.home_score !== null && m.away_score !== null
-
   return (
     <div style={{
       background: 'linear-gradient(145deg,#161616,#1e1e1e)',
       border: '1px solid #2a2a2a', borderRadius: 16, overflow: 'hidden',
       boxShadow: '0 4px 20px rgba(0,0,0,0.5)', marginBottom: 14,
     }}>
-      {/* Competition stripe */}
       <div style={{
         background: isResult ? 'linear-gradient(90deg,#0a1f0a,#162416)' : 'linear-gradient(90deg,#0a0a1f,#141428)',
         padding: '9px 16px', borderBottom: '1px solid #2a2a2a',
@@ -171,8 +193,6 @@ function MatchCard({ m, isResult }) {
           {m.competition}
         </span>
       </div>
-
-      {/* Date + time */}
       <div style={{
         background: '#1a1a1a', borderBottom: '1px solid #2a2a2a',
         padding: '7px 16px', display: 'flex', alignItems: 'center', gap: 10,
@@ -181,9 +201,7 @@ function MatchCard({ m, isResult }) {
         <span style={{ fontSize: 11, color: '#444' }}>·</span>
         <span style={{ fontSize: 12, color: '#fff', fontFamily: 'monospace', fontWeight: 700 }}>⏱ {m.kickoff_cet}</span>
       </div>
-
       <div style={{ padding: '18px 16px' }}>
-        {/* Teams + score */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flex: 1 }}>
             <TeamFlag name={m.home_team} isTBD={isTBD} />
@@ -192,7 +210,6 @@ function MatchCard({ m, isResult }) {
               {isTBD ? 'TBD' : m.home_team}
             </span>
           </div>
-
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, minWidth: 90 }}>
             {scored ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -205,7 +222,6 @@ function MatchCard({ m, isResult }) {
             )}
             <StatusBadge status={m.status} />
           </div>
-
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flex: 1 }}>
             <TeamFlag name={m.away_team} isTBD={isTBD} />
             <span style={{ fontSize: 12, fontWeight: 700, color: isTBD ? '#555' : '#eee',
@@ -214,8 +230,6 @@ function MatchCard({ m, isResult }) {
             </span>
           </div>
         </div>
-
-        {/* Venue */}
         {m.stadium && (
           <div style={{ marginTop: 12, padding: '8px 12px', background: 'rgba(255,255,255,0.05)',
             borderRadius: 8, display: 'flex', gap: 8, border: '1px solid rgba(255,255,255,0.08)' }}>
@@ -226,8 +240,6 @@ function MatchCard({ m, isResult }) {
             </div>
           </div>
         )}
-
-        {/* H2H */}
         <H2HSection m={m} />
       </div>
     </div>
@@ -255,7 +267,6 @@ export default function App() {
   const [error, setError]         = useState(null)
   const [tab, setTab]             = useState('today')
   const [lastRefresh, setLastRefresh] = useState(null)
-  // H2H results keyed by match id
   const [h2hData, setH2hData]     = useState({})
   const [h2hLoading, setH2hLoading] = useState(false)
 
@@ -267,8 +278,6 @@ export default function App() {
       setLastRefresh(new Date())
       if (result.today_matches.length > 0) setTab('today')
       else if (result.yesterday_matches.length > 0) setTab('yesterday')
-
-      // Fetch H2H for all known-team matches in background
       const allVisible = [...result.today_matches, ...result.yesterday_matches]
       if (allVisible.some(m => m.teams_known)) {
         setH2hLoading(true)
@@ -301,7 +310,6 @@ export default function App() {
     return () => document.removeEventListener('visibilitychange', fn)
   }, [load, lastRefresh])
 
-  // Enrich matches with H2H data
   function enrichMatches(matches) {
     return matches.map(m => {
       if (!m.teams_known) return m
@@ -315,7 +323,6 @@ export default function App() {
   const todayM  = enrichMatches(data?.today_matches     ?? [])
   const yesterM = enrichMatches(data?.yesterday_matches ?? [])
   const matches = tab === 'today' ? todayM : yesterM
-
   const tabs = [
     { id: 'today',     label: 'Today',     count: todayM.length,  col: '#f7a03f' },
     { id: 'yesterday', label: 'Yesterday', count: yesterM.length, col: '#3fd475' },
@@ -324,8 +331,6 @@ export default function App() {
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a',
       fontFamily: "'Inter',-apple-system,sans-serif", color: '#e8e8e8' }}>
-
-      {/* Header */}
       <div style={{
         background: 'linear-gradient(180deg,#0c1018,#0a0a0a)',
         borderBottom: '1px solid #222', padding: '18px 20px 14px',
@@ -365,14 +370,12 @@ export default function App() {
           </div>
         )}
       </div>
-
       <div style={{ maxWidth: 680, margin: '0 auto', padding: '0 14px 40px' }}>
         {error && !loading && (
           <div style={{ marginTop: 20, padding: 16, borderRadius: 12,
             background: '#180a0a', border: '1px solid #4a1a1a',
             color: '#f74e4e', fontSize: 13 }}>⚠️ {error}</div>
         )}
-
         {data && (
           <>
             <div style={{ display: 'flex', gap: 6, marginTop: 16, marginBottom: 16 }}>
@@ -393,7 +396,6 @@ export default function App() {
                 </button>
               ))}
             </div>
-
             {matches.length === 0
               ? <div style={{ textAlign: 'center', color: '#333', padding: 48, fontSize: 14 }}>
                   No matches for {tab === 'today' ? 'today' : 'yesterday'}
@@ -405,10 +407,8 @@ export default function App() {
             }
           </>
         )}
-
         {loading && !data && <Skeleton />}
       </div>
-
       <style>{`
         @keyframes spin    { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
         @keyframes shimmer { 0%{background-position:100% 0} 100%{background-position:-100% 0} }
