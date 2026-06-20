@@ -34,6 +34,18 @@ function getFlag(name) {
   return '🏳️'
 }
 
+const TROPHY_SRC = "data:image/png;base64,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"
+
+function WCTrophy() {
+  return (
+    <img
+      src={TROPHY_SRC}
+      alt="FIFA World Cup Trophy"
+      style={{ height: 48, width: 'auto', objectFit: 'contain' }}
+    />
+  )
+}
+
 function TeamFlag({ name, isTBD }) {
   return (
     <div style={{
@@ -47,53 +59,29 @@ function TeamFlag({ name, isTBD }) {
 }
 
 function H2HRow({ m, i }) {
-  // Split score into home/away around the dash
-  // Handles: "2-0", "3-2 (aet)", "0-0 (4-2p)", "10-1"
   const parts = (m.score || '').match(/^(\S+)-(\S+.*)$/)
   const scoreL = parts ? parts[1] : m.score
   const scoreR = parts ? parts[2] : ''
-
   return (
     <div style={{
-      display: 'grid',
-      gridTemplateColumns: '76px 1fr 28px 10px 28px 1fr',
-      alignItems: 'center',
-      padding: '7px 12px',
-      gap: 0,
+      display: 'grid', gridTemplateColumns: '76px 1fr 28px 10px 28px 1fr',
+      alignItems: 'center', padding: '7px 12px', gap: 0,
       background: i % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)',
     }}>
-      <span style={{ color: '#666', fontSize: 10, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
-        {m.date}
-      </span>
+      <span style={{ color: '#666', fontSize: 10, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{m.date}</span>
       <span style={{ color: '#ccc', fontSize: 11, textAlign: 'right', paddingRight: 6,
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {m.home}
-      </span>
-      <span style={{
-        fontFamily: 'monospace', fontWeight: 700, color: '#fff', fontSize: 12,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.home}</span>
+      <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#fff', fontSize: 12,
         textAlign: 'right', background: 'rgba(255,255,255,0.10)',
-        borderRadius: '4px 0 0 4px', padding: '2px 5px', display: 'block',
-      }}>
-        {scoreL}
-      </span>
-      <span style={{
-        fontFamily: 'monospace', fontWeight: 700, color: '#666', fontSize: 12,
-        textAlign: 'center', background: 'rgba(255,255,255,0.10)',
-        padding: '2px 0', display: 'block',
-      }}>
-        -
-      </span>
-      <span style={{
-        fontFamily: 'monospace', fontWeight: 700, color: '#fff', fontSize: 12,
+        borderRadius: '4px 0 0 4px', padding: '2px 5px', display: 'block' }}>{scoreL}</span>
+      <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#666', fontSize: 12,
+        textAlign: 'center', background: 'rgba(255,255,255,0.10)', padding: '2px 0', display: 'block' }}>-</span>
+      <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#fff', fontSize: 12,
         textAlign: 'left', background: 'rgba(255,255,255,0.10)',
-        borderRadius: '0 4px 4px 0', padding: '2px 5px', display: 'block',
-      }}>
-        {scoreR}
-      </span>
+        borderRadius: '0 4px 4px 0', padding: '2px 5px', display: 'block' }}>{scoreR}</span>
       <span style={{ color: '#ccc', fontSize: 11, paddingLeft: 6,
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {m.away}
-        {m.note && <span style={{ color: '#555', fontSize: 9, marginLeft: 5 }}>{m.note}</span>}
+        {m.away}{m.note && <span style={{ color: '#555', fontSize: 9, marginLeft: 5 }}>{m.note}</span>}
       </span>
     </div>
   )
@@ -116,34 +104,26 @@ function StatusBadge({ status }) {
 
 function H2HSection({ m }) {
   const [open, setOpen] = useState(false)
-  if (!m.teams_known) {
-    return (
-      <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8,
-        background: 'rgba(255,255,255,0.03)', border: '1px solid #222',
-        fontSize: 11, color: '#444', fontStyle: 'italic' }}>
-        ⚔️ Head-to-head available once teams are confirmed
-      </div>
-    )
-  }
-  if (m.h2h_status === 'loading' || m.h2h_status === 'pending') {
-    return (
-      <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8,
-        background: 'rgba(255,255,255,0.03)', border: '1px solid #222',
-        fontSize: 11, color: '#555', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⟳</span>
-        Loading head-to-head history...
-      </div>
-    )
-  }
-  if (m.h2h_status === 'error') {
-    return (
-      <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8,
-        background: 'rgba(255,255,255,0.03)', border: '1px solid #222',
-        fontSize: 11, color: '#555' }}>
-        ⚔️ Head-to-head data unavailable
-      </div>
-    )
-  }
+  if (!m.teams_known) return (
+    <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8,
+      background: 'rgba(255,255,255,0.03)', border: '1px solid #222',
+      fontSize: 11, color: '#444', fontStyle: 'italic' }}>
+      ⚔️ Head-to-head available once teams are confirmed
+    </div>
+  )
+  if (m.h2h_status === 'loading' || m.h2h_status === 'pending') return (
+    <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8,
+      background: 'rgba(255,255,255,0.03)', border: '1px solid #222',
+      fontSize: 11, color: '#555', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⟳</span>
+      Loading head-to-head history...
+    </div>
+  )
+  if (m.h2h_status === 'error') return (
+    <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8,
+      background: 'rgba(255,255,255,0.03)', border: '1px solid #222',
+      fontSize: 11, color: '#555' }}>⚔️ Head-to-head data unavailable</div>
+  )
   const h2h = m.h2h || []
   return (
     <div style={{ marginTop: 10 }}>
@@ -193,10 +173,8 @@ function MatchCard({ m, isResult }) {
           {m.competition}
         </span>
       </div>
-      <div style={{
-        background: '#1a1a1a', borderBottom: '1px solid #2a2a2a',
-        padding: '7px 16px', display: 'flex', alignItems: 'center', gap: 10,
-      }}>
+      <div style={{ background: '#1a1a1a', borderBottom: '1px solid #2a2a2a',
+        padding: '7px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
         <span style={{ fontSize: 11, color: '#ccc', fontFamily: 'monospace' }}>🗓 {m.date_cet}</span>
         <span style={{ fontSize: 11, color: '#444' }}>·</span>
         <span style={{ fontSize: 12, color: '#fff', fontFamily: 'monospace', fontWeight: 700 }}>⏱ {m.kickoff_cet}</span>
@@ -274,8 +252,7 @@ export default function App() {
     setLoading(true); setError(null)
     try {
       const result = await fetchMatches()
-      setData(result)
-      setLastRefresh(new Date())
+      setData(result); setLastRefresh(new Date())
       if (result.today_matches.length > 0) setTab('today')
       else if (result.yesterday_matches.length > 0) setTab('yesterday')
       const allVisible = [...result.today_matches, ...result.yesterday_matches]
@@ -286,11 +263,8 @@ export default function App() {
           setH2hLoading(false)
         }).catch(() => setH2hLoading(false))
       }
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
-    }
+    } catch (e) { setError(e.message) }
+    finally { setLoading(false) }
   }, [])
 
   useEffect(() => {
@@ -313,9 +287,7 @@ export default function App() {
   function enrichMatches(matches) {
     return matches.map(m => {
       if (!m.teams_known) return m
-      if (m.id in h2hData) {
-        return { ...m, h2h: h2hData[m.id], h2h_status: h2hData[m.id] === null ? 'error' : 'loaded' }
-      }
+      if (m.id in h2hData) return { ...m, h2h: h2hData[m.id], h2h_status: h2hData[m.id] === null ? 'error' : 'loaded' }
       return { ...m, h2h_status: h2hLoading ? 'loading' : 'pending' }
     })
   }
@@ -333,20 +305,18 @@ export default function App() {
       fontFamily: "'Inter',-apple-system,sans-serif", color: '#e8e8e8' }}>
       <div style={{
         background: 'linear-gradient(180deg,#0c1018,#0a0a0a)',
-        borderBottom: '1px solid #222', padding: '18px 20px 14px',
+        borderBottom: '1px solid #222', padding: '14px 20px',
         position: 'sticky', top: 0, zIndex: 10, backdropFilter: 'blur(10px)',
       }}>
         <div style={{ maxWidth: 680, margin: '0 auto',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 22 }}>🏆</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <WCTrophy />
             <div>
-              <h1 style={{ margin: 0, fontSize: 18, fontWeight: 900,
-                background: 'linear-gradient(90deg,#fff 20%,#7b8cf7 100%)',
-                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              <h1 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: '#ffffff', letterSpacing: '-0.01em' }}>
                 FIFA World Cup 2026™
               </h1>
-              <p style={{ margin: 0, fontSize: 10, color: '#555',
+              <p style={{ margin: 0, fontSize: 10, color: '#7b8cf7',
                 textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 USA · Canada · Mexico
               </p>
@@ -363,8 +333,7 @@ export default function App() {
           </button>
         </div>
         {lastRefresh && !loading && (
-          <div style={{ maxWidth: 680, margin: '4px auto 0',
-            fontSize: 10, color: '#333', textAlign: 'right' }}>
+          <div style={{ maxWidth: 680, margin: '4px auto 0', fontSize: 10, color: '#333', textAlign: 'right' }}>
             Updated {lastRefresh.toLocaleTimeString()} · auto-refreshes every hour
             {h2hLoading && <span style={{ color: '#555' }}> · fetching H2H…</span>}
           </div>
@@ -373,8 +342,9 @@ export default function App() {
       <div style={{ maxWidth: 680, margin: '0 auto', padding: '0 14px 40px' }}>
         {error && !loading && (
           <div style={{ marginTop: 20, padding: 16, borderRadius: 12,
-            background: '#180a0a', border: '1px solid #4a1a1a',
-            color: '#f74e4e', fontSize: 13 }}>⚠️ {error}</div>
+            background: '#180a0a', border: '1px solid #4a1a1a', color: '#f74e4e', fontSize: 13 }}>
+            ⚠️ {error}
+          </div>
         )}
         {data && (
           <>
@@ -401,8 +371,7 @@ export default function App() {
                   No matches for {tab === 'today' ? 'today' : 'yesterday'}
                 </div>
               : matches.map((m, i) => (
-                  <MatchCard key={m.id || i} m={m}
-                    isResult={tab === 'yesterday' || m.status === 'FT'} />
+                  <MatchCard key={m.id || i} m={m} isResult={tab === 'yesterday' || m.status === 'FT'} />
                 ))
             }
           </>
