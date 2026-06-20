@@ -104,7 +104,8 @@ export async function fetchH2H(team1, team2) {
     const res = await fetch(url)
     if (!res.ok) throw new Error(`H2H API ${res.status}`)
     const data = await res.json()
-    return data.h2h || []
+    const raw = data.h2h
+    return Array.isArray(raw) ? raw : []
   } catch (err) {
     console.error(`H2H fetch failed for ${team1} vs ${team2}:`, err.message)
     return null // null signals error, different from [] (no meetings)
