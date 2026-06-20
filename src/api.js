@@ -1,62 +1,26 @@
+// src/api.js — Frontend data fetching
+// Matches come from openfootball (free, no key)
+// H2H comes from /api/h2h (serverless function → Vercel KV → Claude web search)
+
 const RAW = 'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json'
-
-const H2H_DATA = {
-  'England_Croatia': [
-    { date: '13 Jun 2021', home: 'England', away: 'Croatia', score: '1-0', note: 'EURO 2020' },
-    { date: '18 Nov 2018', home: 'Croatia', away: 'England', score: '2-1', note: 'Nations League' },
-    { date: '11 Jul 2018', home: 'Croatia', away: 'England', score: '2-1 aet', note: 'WC 2018 SF' },
-  ],
-  'Ghana_Panama': [],
-  'Portugal_DR Congo': [
-    { date: '15 Nov 2014', home: 'Portugal', away: 'DR Congo', score: '2-0', note: 'Friendly' },
-  ],
-  'Uzbekistan_Colombia': [
-    { date: '15 Oct 2023', home: 'Colombia', away: 'Uzbekistan', score: '2-2', note: 'Friendly' },
-  ],
-  'Czechia_South Africa': [
-    { date: '14 Jun 1997', home: 'South Africa', away: 'Czech Rep.', score: '2-2', note: 'Confed. Cup' },
-  ],
-  'Switzerland_Bosnia': [
-    { date: '29 May 2016', home: 'Bosnia', away: 'Switzerland', score: '1-0', note: 'Friendly' },
-  ],
-  'Canada_Qatar': [],
-  'Mexico_South Korea': [
-    { date: '23 Jun 2018', home: 'Mexico', away: 'South Korea', score: '2-1', note: 'WC 2018' },
-    { date: '22 Jun 2014', home: 'South Korea', away: 'Mexico', score: '0-1', note: 'Friendly' },
-    { date: '28 Jul 2012', home: 'South Korea', away: 'Mexico', score: '0-0 (3-4p)', note: 'Olympic Bronze' },
-  ],
-}
-
-function getH2H(t1, t2) {
-  for (const [key, val] of Object.entries(H2H_DATA)) {
-    const [a, b] = key.split('_')
-    if (t1.includes(a) && t2.includes(b)) return val
-    if (t2.includes(a) && t1.includes(b)) return val
-    if (a.includes(t1) && b.includes(t2)) return val
-    if (a.includes(t2) && b.includes(t1)) return val
-  }
-  return []
-}
 
 // ET offset: EDT=UTC-4 (Mar-Nov), EST=UTC-5
 function etOffset(date) {
-  const m = date.getUTCMonth()
-  return (m >= 2 && m <= 10) ? -4 : -5
+  return (date.getUTCMonth() >= 2 && date.getUTCMonth() <= 10) ? -4 : -5
 }
 
 // CET offset: CEST=UTC+2 (Mar-Oct), CET=UTC+1
 function cetOffset(date) {
-  const m = date.getUTCMonth()
-  return (m >= 2 && m <= 9) ? 2 : 1
+  return (date.getUTCMonth() >= 2 && date.getUTCMonth() <= 9) ? 2 : 1
 }
 
-// YYYY-MM-DD in US Eastern Time — for filtering today/yesterday only
+// YYYY-MM-DD in US Eastern Time — for today/yesterday filtering
 function toETDateString(utcDate) {
   const et = new Date(utcDate.getTime() + etOffset(utcDate) * 60 * 60 * 1000)
   return et.toISOString().slice(0, 10)
 }
 
-// Display date and time in CET — shown in UI
+// Display date and time in CET
 function toCETDisplay(utcDate) {
   const cet = new Date(utcDate.getTime() + cetOffset(utcDate) * 60 * 60 * 1000)
   const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
@@ -67,7 +31,7 @@ function toCETDisplay(utcDate) {
   }
 }
 
-// Parse match local time + UTC offset into a UTC Date object
+// Parse match local time + UTC offset → UTC Date
 function parseMatchUTC(dateStr, timeStr) {
   const clean = (timeStr || '00:00').trim()
   const match = clean.match(/(\d{2}:\d{2})\s*(?:UTC([+-]\d+))?/)
@@ -86,6 +50,22 @@ function toStatus(m) {
   return 'Upcoming'
 }
 
+// Detect if a team name is a real team or a TBD placeholder
+// openfootball uses codes like "W49" (winner match 49) for knockout TBDs
+function isRealTeam(name) {
+  if (!name || name === '?') return false
+  // Placeholder patterns: "W49", "L12", "R1A" (runner-up group A), etc.
+  if (/^[WLRA]\d+$/.test(name)) return false
+  if (/^(winner|loser|runner)/i.test(name)) return false
+  return true
+}
+
+function isGroupStage(round) {
+  return !round || round.toLowerCase().includes('match') ||
+    round.toLowerCase().includes('group') ||
+    /matchday/i.test(round)
+}
+
 function transform(m) {
   const home = m.team1 || '?'
   const away = m.team2 || '?'
@@ -94,41 +74,82 @@ function transform(m) {
   const { date_cet, kickoff_cet } = toCETDisplay(utcDate)
   const et_date = toETDateString(utcDate)
   const scored = status === 'FT' || status === 'HT'
+  const teamsKnown = isRealTeam(home) && isRealTeam(away)
+
   return {
     id: `${m.date}_${home}_${away}`,
-    home_team: home, away_team: away,
+    home_team: home,
+    away_team: away,
     home_score: scored ? (m.score?.ft?.[0] ?? m.score?.ht?.[0] ?? null) : null,
     away_score: scored ? (m.score?.ft?.[1] ?? m.score?.ht?.[1] ?? null) : null,
     status,
+    round: m.round || 'Group Stage',
     competition: `FIFA World Cup 2026 · ${m.round || 'Group Stage'}`,
     stadium: m.stadium?.name || m.venue || '',
     city: m.stadium?.city || m.city || '',
-    date_cet,
-    kickoff_cet,
-    et_date,
-    utc_ms: utcDate.getTime(), // raw UTC milliseconds — used for sorting
+    date_cet, kickoff_cet, et_date,
+    utc_ms: utcDate.getTime(),
     scorers: null,
-    h2h: getH2H(home, away),
+    teams_known: teamsKnown,
+    h2h: null,        // null = not yet loaded
+    h2h_status: teamsKnown ? 'pending' : 'tbd', // pending|loading|loaded|tbd|error
   }
 }
 
+// Fetch H2H for a single match from our serverless function
+// Returns the h2h array or null on error
+export async function fetchH2H(team1, team2) {
+  try {
+    const url = `/api/h2h?team1=${encodeURIComponent(team1)}&team2=${encodeURIComponent(team2)}`
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`H2H API ${res.status}`)
+    const data = await res.json()
+    return data.h2h || []
+  } catch (err) {
+    console.error(`H2H fetch failed for ${team1} vs ${team2}:`, err.message)
+    return null // null signals error, different from [] (no meetings)
+  }
+}
+
+// Main: fetch all matches + H2H in parallel
 export async function fetchMatches() {
+  // 1. Fetch all WC matches
   const res = await fetch(RAW)
   if (!res.ok) throw new Error(`API_ERROR_${res.status}`)
   const data = await res.json()
   const allMatches = (data.matches || []).map(transform)
 
-  // Today and yesterday in US Eastern Time
+  // 2. Determine today + yesterday in US Eastern Time
   const nowUTC = new Date()
   const nowET = new Date(nowUTC.getTime() + etOffset(nowUTC) * 60 * 60 * 1000)
   const todayET = nowET.toISOString().slice(0, 10)
   const yesterdayET = new Date(nowET.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
-  // Sort by actual UTC kickoff time — always correct regardless of timezone display
   const byUTC = (a, b) => a.utc_ms - b.utc_ms
-
   const today_matches = allMatches.filter(m => m.et_date === todayET).sort(byUTC)
   const yesterday_matches = allMatches.filter(m => m.et_date === yesterdayET).sort(byUTC)
 
-  return { today_matches, yesterday_matches, generated_at: new Date().toISOString() }
+  return {
+    today_matches,
+    yesterday_matches,
+    generated_at: new Date().toISOString(),
+  }
+}
+
+// Fetch H2H for a batch of matches in parallel (max 5 at a time to avoid rate limits)
+export async function fetchH2HBatch(matches) {
+  const pending = matches.filter(m => m.teams_known && m.h2h_status === 'pending')
+  if (pending.length === 0) return {}
+
+  const results = {}
+  // Process in chunks of 5
+  for (let i = 0; i < pending.length; i += 5) {
+    const chunk = pending.slice(i, i + 5)
+    const fetches = chunk.map(async m => {
+      const h2h = await fetchH2H(m.home_team, m.away_team)
+      results[m.id] = h2h
+    })
+    await Promise.all(fetches)
+  }
+  return results
 }
