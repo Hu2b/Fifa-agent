@@ -113,6 +113,74 @@ export async function fetchH2H(team1, team2) {
 }
 
 // Main: fetch all matches + H2H in parallel
+
+// Check if a match is currently ongoing (between kickoff and kickoff + 130 min)
+function isMatchOngoing(utc_ms) {
+  const now = Date.now()
+  const kickoff = utc_ms
+  const end = utc_ms + 130 * 60 * 1000 // 130 min after kickoff
+  return now >= kickoff && now <= end
+}
+
+// Fetch live scores from our serverless function
+// Only called when user taps Refresh and a match is ongoing
+// Returns null if no live data available
+export async function fetchLiveScores() {
+  try {
+    const r = await fetch('/api/livescores')
+    if (!r.ok) return null
+    const data = await r.json()
+    if (data.source === 'no_key' || data.source === 'error') return null
+    return data // { scores, cached_at, age_minutes, next_refresh_in }
+  } catch(e) {
+    console.error('fetchLiveScores error:', e.message)
+    return null
+  }
+}
+
+// Match live score data onto openfootball matches
+// scores is keyed by "home_name|away_name" from API-Football
+function matchName(n) {
+  // Normalize for fuzzy matching between openfootball and API-Football names
+  return (n || '').toLowerCase()
+    .replace(/&/g,'and').replace(/\./g,'').replace(/\s+/g,' ').trim()
+}
+
+export function applyLiveScores(matches, liveData) {
+  if (!liveData || !liveData.scores) return matches
+  const scores = liveData.scores
+
+  return matches.map(m => {
+    // Try to find matching live score entry
+    let found = null
+    const mHome = matchName(m.home_team)
+    const mAway = matchName(m.away_team)
+
+    for (const [key, val] of Object.entries(scores)) {
+      const [lHome, lAway] = key.split('|').map(matchName)
+      if ((lHome.includes(mHome) || mHome.includes(lHome)) &&
+          (lAway.includes(mAway) || mAway.includes(lAway))) {
+        found = val
+        break
+      }
+    }
+
+    if (!found) return m
+
+    return {
+      ...m,
+      status:     found.status,
+      home_score: found.home_score,
+      away_score: found.away_score,
+    }
+  })
+}
+
+// Check if any match in the list is currently ongoing
+export function hasOngoingMatch(matches) {
+  return matches.some(m => isMatchOngoing(m.utc_ms))
+}
+
 export async function fetchMatches() {
   // 1. Fetch all WC matches
   const res = await fetch(RAW)
