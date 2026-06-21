@@ -167,6 +167,10 @@ export function applyLiveScores(matches, liveData) {
 
     if (!found) return m
 
+    // Don't apply live data if status is Upcoming — could be a stale cache
+    // from before the match started. Keep openfootball status in that case.
+    if (found.status === 'Upcoming') return m
+
     return {
       ...m,
       status:     found.status,
