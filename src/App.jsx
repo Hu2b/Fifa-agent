@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { fetchMatches, fetchH2HBatch } from './api.js'
+import { fetchMatches, fetchH2HBatch, fetchLiveScores, applyLiveScores, hasOngoingMatch } from './api.js'
 
 const FLAGS = {
   'Mexico': '🇲🇽', 'South Africa': '🇿🇦', 'South Korea': '🇰🇷', 'Korea Republic': '🇰🇷',
@@ -250,6 +250,8 @@ export default function App() {
   const [lastRefresh, setLastRefresh] = useState(null)
   const [h2hData, setH2hData]     = useState({})
   const [h2hLoading, setH2hLoading] = useState(false)
+  const [liveData, setLiveData]     = useState(null)
+  const [liveInfo, setLiveInfo]     = useState(null) // { age_minutes, next_refresh_in }
 
   const load = useCallback(async () => {
     setLoading(true); setError(null)
@@ -265,6 +267,18 @@ export default function App() {
           setH2hData(prev => ({ ...prev, ...results }))
           setH2hLoading(false)
         }).catch(() => setH2hLoading(false))
+      }
+      // Fetch live scores if any match is ongoing and user manually refreshed
+      const allVisible2 = [...result.today_matches, ...result.yesterday_matches]
+      if (hasOngoingMatch(allVisible2)) {
+        const live = await fetchLiveScores()
+        if (live) {
+          setLiveData(live.scores)
+          setLiveInfo({ age_minutes: live.age_minutes, next_refresh_in: live.next_refresh_in })
+        }
+      } else {
+        setLiveData(null)
+        setLiveInfo(null)
       }
     } catch (e) { setError(e.message) }
     finally { setLoading(false) }
@@ -288,7 +302,9 @@ export default function App() {
   }, [load, lastRefresh])
 
   function enrichMatches(matches) {
-    return matches.map(m => {
+    // Apply live scores overlay if available
+    const withLive = liveData ? applyLiveScores(matches, { scores: liveData }) : matches
+    return withLive.map(m => {
       if (!m.teams_known) return m
       if (m.id in h2hData) return { ...m, h2h: h2hData[m.id], h2h_status: h2hData[m.id] === null ? 'error' : 'loaded' }
       return { ...m, h2h_status: h2hLoading ? 'loading' : 'pending' }
@@ -339,6 +355,7 @@ export default function App() {
           <div style={{ maxWidth: 680, margin: '4px auto 0', fontSize: 10, color: '#333', textAlign: 'right' }}>
             Updated {lastRefresh.toLocaleTimeString()} · auto-refreshes every hour
             {h2hLoading && <span style={{ color: '#555' }}> · fetching H2H…</span>}
+            {liveInfo && <span style={{ color: '#3fd475' }}> · live scores {liveInfo.age_minutes < 1 ? 'just updated' : `${liveInfo.age_minutes}min ago`}{liveInfo.next_refresh_in > 0 ? ` · next in ${liveInfo.next_refresh_in}min` : ''}</span>}
           </div>
         )}
       </div>
